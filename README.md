@@ -13,7 +13,7 @@ npm install @laot/nuix
 ### 1. Define Your Event Map
 
 ```ts
-import type { NuiEventMap } from "nuix";
+import type { NuiEventMap } from "@laot/nuix";
 
 interface MyEvents extends NuiEventMap {
   getPlayer: { request: { id: number }; response: { name: string; level: number } };
@@ -24,7 +24,7 @@ interface MyEvents extends NuiEventMap {
 ### 2. Typed FetchNui
 
 ```ts
-import { createFetchNui } from "nuix";
+import { createFetchNui } from "@laot/nuix";
 
 const fetchNui = createFetchNui<MyEvents>();
 
@@ -41,7 +41,7 @@ const data = await fetchNui("getPlayer", { id: 2 }, { timeout: 5000 });
 ### 3. NUI Message Listener
 
 ```ts
-import { onNuiMessage } from "nuix";
+import { onNuiMessage } from "@laot/nuix";
 
 interface MyMessages extends NuiEventMap {
   showMenu: { request: { items: string[] }; response: void };
@@ -59,7 +59,7 @@ unsub();
 ### 4. Lua-Style Formatter
 
 ```ts
-import { luaFormat } from "nuix";
+import { luaFormat } from "@laot/nuix";
 
 luaFormat("Hello %s, you are level %d", "Laot", 42);
 // → "Hello Laot, you are level 42"
@@ -71,7 +71,7 @@ luaFormat("Accuracy: %f%%", 99.5);
 ### 5. Translator
 
 ```ts
-import { createTranslator, mergeLocales } from "nuix";
+import { createTranslator, mergeLocales } from "@laot/nuix";
 
 const _U = createTranslator({
   locales: {
