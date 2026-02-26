@@ -1,0 +1,49 @@
+{
+	"name": "nuix",
+	"version": "1.0.0",
+	"description": "Modular, type-safe TypeScript library for FiveM NUI projects",
+	"type": "module",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": [
+		"fivem",
+		"nui",
+		"typescript",
+		"cfx",
+		"citizenfx"
+	],
+	"author": "laot",
+	"homepage": "https://github.com/laot7490/nuix#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/laot7490/nuix.git"
+	},
+	"bugs": {
+		"url": "https://github.com/laot7490/nuix/issues"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"tsup": "^8.4.0",
+		"typescript": "^5.7.3"
+	}
+}
