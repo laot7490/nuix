@@ -78,31 +78,21 @@ function resolveKey(locales: LocaleRecord, key: string): string | undefined {
 // ─── Translator Factory ───
 
 /**
- * Creates a `_U(key, fallback, ...args)` translator bound to a locale record.
- *
- * The key supports dot-notation to traverse nested locale objects.
- * If the key isn't found, the fallback string is returned as-is.
- * Any extra args are passed through `luaFormat` for placeholder substitution.
+ * Creates an isolated translator bound to a specific locale record.
+ * Use this when you need a separate translator instance, independent of the global `_U`.
  *
  * @example
  * ```ts
- * const _U = createTranslator({
+ * const _T = createTranslator({
  *   locales: {
- *     client: {
- *       greeting: "Hello %s!",
- *       level: "Level %d",
- *     },
- *     server: {
- *       error: "Error: %s",
- *     },
- *     flat_key: "Plain message",
+ *     greeting: "Hello %s!",
+ *     level: "Level %d",
  *   },
  * });
  *
- * _U("client.greeting", "MISSING", "Laot");  // → "Hello Laot!"
- * _U("client.level", "MISSING", 42);         // → "Level 42"
- * _U("flat_key", "MISSING");                 // → "Plain message"
- * _U("no.key", "Not found");                 // → "Not found"
+ * _T("greeting", "MISSING", "Laot"); // → "Hello Laot!"
+ * _T("level", "MISSING", 42);        // → "Level 42"
+ * _T("no.key", "Not found");         // → "Not found"
  * ```
  */
 export function createTranslator(options: TranslatorOptions): TranslatorFn {
@@ -117,6 +107,72 @@ export function createTranslator(options: TranslatorOptions): TranslatorFn {
 
 		return args.length > 0 ? luaFormat(template, ...args) : template;
 	};
+}
+
+// ─── Global Locale Registry ───
+
+let _locales: LocaleRecord = {};
+
+/**
+ * Sets the global locale map. Call this when Lua sends locale data to the NUI.
+ *
+ * @example
+ * ```ts
+ * // Lua side:
+ * // SendNUIMessage({ action = "setLocales", data = locales })
+ *
+ * onNuiMessage<Events>((action, data) => {
+ *   switch (action) {
+ *     case "setLocales":
+ *       registerLocales(data);
+ *       break;
+ *   }
+ * });
+ * ```
+ */
+export function registerLocales(locales: LocaleRecord): void {
+	_locales = locales;
+}
+
+/**
+ * Merges new entries into the current global locale map without replacing it.
+ *
+ * @example
+ * ```ts
+ * registerLocales({ ui: { title: "Dashboard" } });
+ * extendLocales({ ui: { subtitle: "Overview" } });
+ *
+ * _U("ui.title", "");    // → "Dashboard"
+ * _U("ui.subtitle", ""); // → "Overview"
+ * ```
+ */
+export function extendLocales(...records: LocaleRecord[]): void {
+	_locales = mergeLocales(_locales, ...records);
+}
+
+/**
+ * Global translator — reads from the locale map set by `registerLocales` / `extendLocales`.
+ *
+ * @param key      Dot-notated key, e.g. `"ui.greeting"` or flat `"title"`
+ * @param fallback Returned as-is when the key doesn't exist
+ * @param args     Values for `%s`, `%d`, `%f` placeholders
+ *
+ * @example
+ * ```ts
+ * import { registerLocales, _U } from "@laot/nuix";
+ *
+ * // After Lua sends locales:
+ * // { ui: { greeting: "Hello %s!", level: "Level %d" } }
+ *
+ * _U("ui.greeting", "Hi", "Laot"); // → "Hello Laot!"
+ * _U("ui.level", "Lv.", 42);       // → "Level 42"
+ * _U("missing.key", "Fallback");   // → "Fallback"
+ * ```
+ */
+export function _U(key: string, fallback: string, ...args: FormatArg[]): string {
+	const template = resolveKey(_locales, key);
+	if (template === undefined) return fallback;
+	return args.length > 0 ? luaFormat(template, ...args) : template;
 }
 
 // ─── Deep Merge ───

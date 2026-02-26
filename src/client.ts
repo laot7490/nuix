@@ -16,12 +16,8 @@ function getResourceName(): string {
 // ─── FetchNui Factory ───
 
 /**
- * Creates a fully typed `fetchNui` function tied to your event map.
- *
- * The returned function POSTs JSON to `https://<resourceName>/<event>`,
- * which maps 1:1 to `RegisterNUICallback` on the Lua side.
- *
- * Supports optional debug logging, mock data for local dev, and per-call timeout.
+ * Creates a typed `fetchNui` function for your event map.
+ * POSTs JSON to `https://<resourceName>/<event>`, matching `RegisterNUICallback` on Lua side.
  *
  * @example
  * ```ts
@@ -30,12 +26,10 @@ function getResourceName(): string {
  *   notify:    { request: { msg: string }; response: void };
  * }
  *
- * // Production usage
  * const fetchNui = createFetchNui<MyEvents>();
  * const player = await fetchNui("getPlayer", { id: 1 });
- * // player.name is typed as string
  *
- * // Local dev with mocks + debug
+ * // With mocks + debug
  * const fetchNui = createFetchNui<MyEvents>({
  *   debug: true,
  *   mockData: {
@@ -59,9 +53,11 @@ export function createFetchNui<TMap extends NuiEventMap>(factoryOptions?: FetchN
 
 	return async function fetchNui<K extends keyof TMap & string>(
 		event: K,
-		data?: TMap[K]["request"],
-		options?: FetchNuiOptions,
+		...args: TMap[K]["request"] extends void
+			? [data?: TMap[K]["request"], options?: FetchNuiOptions]
+			: [data: TMap[K]["request"], options?: FetchNuiOptions]
 	): Promise<TMap[K]["response"]> {
+		const [data, options] = args;
 		if (debug) {
 			console.log(`[NUIX] → ${event}`, data ?? {});
 		}

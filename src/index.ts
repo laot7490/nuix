@@ -19,4 +19,4 @@ export { createFetchNui } from "./client";
 export { onNuiMessage } from "./listener";
 
 // ─── Utils ───
-export { luaFormat, createTranslator, mergeLocales } from "./utils";
+export { luaFormat, createTranslator, mergeLocales, registerLocales, extendLocales, _U } from "./utils";

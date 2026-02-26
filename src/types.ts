@@ -50,7 +50,7 @@ export interface FetchNuiOptions {
 // ─── FetchNui Factory Options ───
 
 /**
- * Options passed to `createFetchNui()` at factory level.
+ * Config for `createFetchNui()`.
  *
  * @example
  * ```ts
@@ -64,13 +64,9 @@ export interface FetchNuiOptions {
  * ```
  */
 export interface FetchNuiFactoryOptions<TMap extends NuiEventMap> {
-	/** Logs every `fetchNui` call and response to the console with `[NUIX]` prefix. */
+	/** Logs every call and response to the console with `[NUIX]` prefix. */
 	debug?: boolean;
-	/**
-	 * Mock responses for local development outside FiveM.
-	 * Can be a static value or a function that receives the request and returns the response.
-	 * When a mock exists for an event, no HTTP call is made.
-	 */
+	/** Static or dynamic mock responses — when set, no real HTTP call is made. */
 	mockData?: {
 		[K in keyof TMap]?: TMap[K]["response"] | ((request: TMap[K]["request"]) => TMap[K]["response"]);
 	};
@@ -79,13 +75,12 @@ export interface FetchNuiFactoryOptions<TMap extends NuiEventMap> {
 // ─── Translator ───
 
 /**
- * Locale record — can be flat strings or nested objects.
- * Nested keys are accessed via dot-notation in the translator.
+ * Flat strings or nested objects. Nested keys use dot-notation (`"ui.greeting"`).
  *
  * @example
  * ```ts
  * const locales: LocaleRecord = {
- *   client: {
+ *   ui: {
  *     greeting: "Hello %s!",
  *     level: "Level %d",
  *   },
@@ -98,21 +93,21 @@ export type LocaleRecord = {
 };
 
 export interface TranslatorOptions {
-	/** The locale map. Same structure as `LocaleRecord` — flat or nested. */
+	/** The locale map — flat or nested. */
 	locales: LocaleRecord;
 }
 
 /**
- * Translator function returned by `createTranslator`.
+ * Translator function signature used by both `createTranslator` and the global `_U`.
  *
- * @param key      - Dot-notated key like `'client.greeting'` or flat like `'title'`
- * @param fallback - Returned when the key doesn't exist in the locale map
- * @param args     - Format arguments for `%s`, `%d`, `%f` placeholders
+ * @param key      Dot-notated key like `"ui.greeting"` or flat like `"title"`
+ * @param fallback Returned when the key doesn't exist in the locale map
+ * @param args     Format arguments for `%s`, `%d`, `%f` placeholders
  *
  * @example
  * ```ts
- * _U("client.greeting", "MISSING", "Laot");  // → "Hello Laot!"
- * _U("no.key", "Not found");                 // → "Not found"
+ * _U("ui.greeting", "Hi", "Laot"); // → "Hello Laot!"
+ * _U("missing.key", "Fallback");   // → "Fallback"
  * ```
  */
 export type TranslatorFn = (key: string, fallback: string, ...args: FormatArg[]) => string;
