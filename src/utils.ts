@@ -7,7 +7,7 @@ import type { FormatArg, LocaleRecord, TranslatorFn, TranslatorOptions } from ".
  *
  * Specifiers:
  * - `%s` — string (null/undefined becomes empty string)
- * - `%d` — integer (floors the value, NaN becomes 0)
+ * - `%d` / `%i` — integer (floors the value, NaN becomes 0)
  * - `%f` — float (NaN becomes 0)
  * - `%%` — literal percent sign
  *
@@ -199,7 +199,13 @@ export function mergeLocales(...records: LocaleRecord[]): LocaleRecord {
 		for (const [key, value] of Object.entries(record)) {
 			const existing = result[key];
 
-			if (typeof value === "object" && typeof existing === "object" && existing !== undefined) {
+			if (
+				value !== null &&
+				existing !== null &&
+				typeof value === "object" &&
+				typeof existing === "object" &&
+				existing !== undefined
+			) {
 				result[key] = mergeLocales(existing, value);
 			} else {
 				result[key] = value;
