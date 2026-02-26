@@ -17,15 +17,21 @@ bun add @laot/nuix
 
 ## Quick Start
 
-### 1. Define Your Event Map
+### 1. Define Your Event Maps
 
 ```ts
 import type { NuiEventMap } from "@laot/nuix";
 
-interface MyEvents extends NuiEventMap {
+// fetchNui callbacks (TS → Lua → TS)
+interface CallbackEvents extends NuiEventMap {
   getPlayer:  { request: { id: number }; response: { name: string; level: number } };
   sendNotify: { request: { message: string }; response: void };
-  showMenu:   { request: { items: string[] }; response: void };
+}
+
+// Lua push messages (Lua → TS via SendNUIMessage)
+interface MessageEvents extends NuiEventMap {
+  showMenu: { request: { items: string[] }; response: void };
+  hideMenu: { request: void; response: void };
 }
 ```
 
@@ -34,14 +40,14 @@ interface MyEvents extends NuiEventMap {
 ```ts
 import { createFetchNui } from "@laot/nuix";
 
-const fetchNui = createFetchNui<MyEvents>();
+const fetchNui = createFetchNui<CallbackEvents>();
 
 const player = await fetchNui("getPlayer", { id: 1 });
 console.log(player.name); // string
 
 await fetchNui("sendNotify", { message: "Hello!" });
 
-// With timeout (throws descriptive error on timeout)
+// With timeout
 const data = await fetchNui("getPlayer", { id: 2 }, { timeout: 5000 });
 ```
 
@@ -52,13 +58,13 @@ const data = await fetchNui("getPlayer", { id: 2 }, { timeout: 5000 });
 ```ts
 import { onNuiMessage } from "@laot/nuix";
 
-const unsub = onNuiMessage<MyEvents>((action, data) => {
+const unsub = onNuiMessage<MessageEvents>((action, data) => {
   switch (action) {
-    case "getPlayer":
-      console.log(data.name);
+    case "showMenu":
+      console.log(data.items);
       break;
-    case "sendNotify":
-      console.log(data.message);
+    case "hideMenu":
+      closeMenu();
       break;
   }
 });
@@ -69,7 +75,7 @@ unsub(); // stop listening
 **Per-action** — filtered by action, `data` is fully typed:
 
 ```ts
-const unsub = onNuiMessage<MyEvents, "showMenu">("showMenu", (data) => {
+const unsub = onNuiMessage<MessageEvents, "showMenu">("showMenu", (data) => {
   console.log(data.items); // ✅ typed as string[]
 });
 ```
@@ -153,7 +159,7 @@ const merged = mergeLocales(base, patch);
 Enable console logging for every `fetchNui` call:
 
 ```ts
-const fetchNui = createFetchNui<MyEvents>({ debug: true });
+const fetchNui = createFetchNui<CallbackEvents>({ debug: true });
 
 await fetchNui("getPlayer", { id: 1 });
 // [NUIX] → getPlayer { id: 1 }
@@ -165,7 +171,7 @@ await fetchNui("getPlayer", { id: 1 });
 Return pre-defined responses without real HTTP calls — useful when developing outside FiveM:
 
 ```ts
-const fetchNui = createFetchNui<MyEvents>({
+const fetchNui = createFetchNui<CallbackEvents>({
   debug: true,
   mockData: {
     getPlayer: { name: "DevPlayer", level: 99 },
