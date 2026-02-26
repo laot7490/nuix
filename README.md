@@ -5,7 +5,7 @@
 ## Install
 
 ```bash
-npm install nuix
+npm install @laot/nuix
 ```
 
 ## Quick Start
