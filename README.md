@@ -1,11 +1,18 @@
 # NUIX
 
+[![npm version](https://img.shields.io/npm/v/@laot/nuix.svg)](https://www.npmjs.com/package/@laot/nuix)
+[![license](https://img.shields.io/npm/l/@laot/nuix.svg)](https://github.com/laot7490/nuix/blob/main/LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@laot/nuix)](https://bundlephobia.com/package/@laot/nuix)
+
 > Modular, type-safe TypeScript library for FiveM NUI projects. Zero runtime dependencies.
 
 ## Install
 
 ```bash
 npm install @laot/nuix
+pnpm add @laot/nuix
+yarn add @laot/nuix
+bun add @laot/nuix
 ```
 
 ## Quick Start
