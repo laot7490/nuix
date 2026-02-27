@@ -1,6 +1,6 @@
 {
 	"name": "@laot/nuix",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Modular, type-safe TypeScript library for FiveM NUI projects",
 	"sideEffects": false,
 	"type": "module",
