@@ -7,8 +7,8 @@
  * @example
  * ```ts
  * interface MyEvents extends NuiEventMap {
- *   getPlayer:  { request: { id: number }; response: { name: string; level: number } };
- *   sendNotify: { request: { message: string }; response: void };
+ *   getPlayer:  { data: { id: number }; response: { name: string; level: number } };
+ *   sendNotify: { data: { message: string }; response: void };
  * }
  *
  * // Now fetchNui("getPlayer", { id: 1 }) returns Promise<{ name: string; level: number }>
@@ -16,7 +16,7 @@
  */
 export interface NuiEventMap {
 	[event: string]: {
-		request: unknown;
+		data: unknown;
 		response: unknown;
 	};
 }
@@ -58,7 +58,7 @@ export interface FetchNuiOptions {
  *   debug: true,
  *   mockData: {
  *     getPlayer: { name: "Dev", level: 99 },
- *     sendNotify: (req) => { console.log(req.message); },
+ *     sendNotify: (data) => { console.log(data.message); },
  *   },
  * });
  * ```
@@ -68,7 +68,7 @@ export interface FetchNuiFactoryOptions<TMap extends NuiEventMap> {
 	debug?: boolean;
 	/** Static or dynamic mock responses — when set, no real HTTP call is made. */
 	mockData?: {
-		[K in keyof TMap]?: TMap[K]["response"] | ((request: TMap[K]["request"]) => TMap[K]["response"]);
+		[K in keyof TMap]?: TMap[K]["response"] | ((data: TMap[K]["data"]) => TMap[K]["response"]);
 	};
 }
 

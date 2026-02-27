@@ -24,14 +24,14 @@ import type { NuiEventMap } from "@laot/nuix";
 
 // fetchNui callbacks (TS → Lua → TS)
 interface CallbackEvents extends NuiEventMap {
-  getPlayer:  { request: { id: number }; response: { name: string; level: number } };
-  sendNotify: { request: { message: string }; response: void };
+  getPlayer:  { data: { id: number }; response: { name: string; level: number } };
+  sendNotify: { data: { message: string }; response: void };
 }
 
 // Lua push messages (Lua → TS via SendNUIMessage)
 interface MessageEvents extends NuiEventMap {
-  showMenu: { request: { items: string[] }; response: void };
-  hideMenu: { request: void; response: void };
+  showMenu: { data: { items: string[] }; response: void };
+  hideMenu: { data: void; response: void };
 }
 ```
 
@@ -101,8 +101,8 @@ import { registerLocales, _U, onNuiMessage } from "@laot/nuix";
 import type { NuiEventMap, LocaleRecord } from "@laot/nuix";
 
 interface Events extends NuiEventMap {
-  setLocales: { request: LocaleRecord; response: void };
-  showMenu:   { request: { items: string[] }; response: void };
+  setLocales: { data: LocaleRecord; response: void };
+  showMenu:   { data: { items: string[] }; response: void };
 }
 
 onNuiMessage<Events>((action, data) => {
@@ -175,8 +175,8 @@ const fetchNui = createFetchNui<CallbackEvents>({
   debug: true,
   mockData: {
     getPlayer: { name: "DevPlayer", level: 99 },
-    sendNotify: (req) => {
-      console.log("Mock notification:", req.message);
+    sendNotify: (data) => {
+      console.log("Mock notification:", data.message);
     },
   },
 });

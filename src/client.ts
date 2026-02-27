@@ -22,8 +22,8 @@ function getResourceName(): string {
  * @example
  * ```ts
  * interface MyEvents extends NuiEventMap {
- *   getPlayer: { request: { id: number }; response: { name: string } };
- *   notify:    { request: { msg: string }; response: void };
+ *   getPlayer: { data: { id: number }; response: { name: string } };
+ *   notify:    { data: { msg: string }; response: void };
  * }
  *
  * const fetchNui = createFetchNui<MyEvents>();
@@ -34,7 +34,7 @@ function getResourceName(): string {
  *   debug: true,
  *   mockData: {
  *     getPlayer: { name: "DevPlayer" },
- *     notify: (req) => { console.log("Mock:", req.msg); },
+ *     notify: (data) => { console.log("Mock:", data.msg); },
  *   },
  * });
  * ```
@@ -53,9 +53,9 @@ export function createFetchNui<TMap extends NuiEventMap>(factoryOptions?: FetchN
 
 	return async function fetchNui<K extends keyof TMap & string>(
 		event: K,
-		...args: TMap[K]["request"] extends void
-			? [data?: TMap[K]["request"], options?: FetchNuiOptions]
-			: [data: TMap[K]["request"], options?: FetchNuiOptions]
+		...args: TMap[K]["data"] extends void
+			? [data?: TMap[K]["data"], options?: FetchNuiOptions]
+			: [data: TMap[K]["data"], options?: FetchNuiOptions]
 	): Promise<TMap[K]["response"]> {
 		const [data, options] = args;
 		if (debug) {
@@ -73,7 +73,7 @@ export function createFetchNui<TMap extends NuiEventMap>(factoryOptions?: FetchN
 
 			const result =
 				typeof mock === "function"
-					? (mock as (req: TMap[K]["request"]) => TMap[K]["response"])(data as TMap[K]["request"])
+					? (mock as (data: TMap[K]["data"]) => TMap[K]["response"])(data as TMap[K]["data"])
 					: mock;
 
 			if (debug) {

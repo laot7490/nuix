@@ -35,7 +35,7 @@ import type { NuiEventMap, NuiMessagePayload, NuiMessageHandler, UnsubscribeFn }
 // Per-action overload
 export function onNuiMessage<TMap extends NuiEventMap, K extends keyof TMap & string>(
 	action: K,
-	handler: NuiMessageHandler<TMap[K]["request"]>,
+	handler: NuiMessageHandler<TMap[K]["data"]>,
 ): UnsubscribeFn;
 
 // Switch-case overload
