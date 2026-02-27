@@ -1,8 +1,8 @@
 // ─── Event Map ───
 
 /**
- * Extend this to map your NUI callback names to their request/response shapes.
- * Both `fetchNui` and `onNuiMessage` use this map for full type inference.
+ * Extend this to map your NUI event names to their data/response shapes.
+ * Both `fetchNui` and `onNuiMessage` use this map for type inference.
  *
  * @example
  * ```ts
