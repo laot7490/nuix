@@ -70,6 +70,12 @@ export interface FetchNuiFactoryOptions<TMap extends NuiEventMap> {
 	mockData?: {
 		[K in keyof TMap]?: TMap[K]["response"] | ((data: TMap[K]["data"]) => TMap[K]["response"]);
 	};
+	/**
+	 * When `true`, mock data is ignored inside FiveM and real NUI callbacks are used instead.
+	 * Mocks will still work in the browser for local development.
+	 * @default false
+	 */
+	disableMockInGame?: boolean;
 }
 
 // ─── Translator ───

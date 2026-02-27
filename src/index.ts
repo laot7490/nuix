@@ -13,7 +13,7 @@ export type {
 } from "./types";
 
 // ─── Client ───
-export { createFetchNui } from "./client";
+export { createFetchNui, isEnvBrowser } from "./client";
 
 // ─── Listener ───
 export { onNuiMessage } from "./listener";

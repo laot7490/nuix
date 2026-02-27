@@ -1,5 +1,24 @@
 import type { NuiEventMap, FetchNuiOptions, FetchNuiFactoryOptions } from "./types";
 
+// ─── Environment Detection ───
+
+/**
+ * Returns `true` when the UI is running inside a regular browser (outside FiveM).
+ * Checks for the absence of FiveM's `invokeNative` bridge on the `window` object.
+ *
+ * Use this to gate any logic that should only run inside the game client.
+ *
+ * @example
+ * ```ts
+ * if (isEnvBrowser()) {
+ *   // Running in dev browser — skip game-only logic
+ * }
+ * ```
+ */
+export function isEnvBrowser(): boolean {
+	return typeof window !== "undefined" && !(window as any).invokeNative;
+}
+
 // ─── Resource Name ───
 
 /**
@@ -50,6 +69,7 @@ function getResourceName(): string {
 export function createFetchNui<TMap extends NuiEventMap>(factoryOptions?: FetchNuiFactoryOptions<TMap>) {
 	const debug = factoryOptions?.debug ?? false;
 	const mockData = factoryOptions?.mockData;
+	const disableMockInGame = factoryOptions?.disableMockInGame ?? false;
 
 	return async function fetchNui<K extends keyof TMap & string>(
 		event: K,
@@ -63,8 +83,10 @@ export function createFetchNui<TMap extends NuiEventMap>(factoryOptions?: FetchN
 		}
 
 		// ─── Mock Mode ───
+		// Skip mocks inside FiveM when disableMockInGame is true
 
-		if (mockData && event in mockData) {
+		const useMock = mockData && event in mockData && (isEnvBrowser() || !disableMockInGame);
+		if (useMock) {
 			const mock = mockData[event];
 
 			if (mock === undefined) {
@@ -81,6 +103,15 @@ export function createFetchNui<TMap extends NuiEventMap>(factoryOptions?: FetchN
 			}
 
 			return result as TMap[K]["response"];
+		}
+
+		// ─── Browser Guard ───
+
+		if (isEnvBrowser()) {
+			throw new Error(
+				`[NUIX] fetchNui("${event}") called in browser environment without mock data. ` +
+					`Provide mockData in createFetchNui() options for local development.`,
+			);
 		}
 
 		// ─── Real Fetch ───

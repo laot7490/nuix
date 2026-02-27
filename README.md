@@ -20,6 +20,8 @@ A type-safe TypeScript helper library for FiveM NUI development. Wraps the most 
   - [Translator (Isolated)](#6-translator-isolated)
   - [Debug Mode](#7-debug-mode)
   - [Mock Data](#8-mock-data-local-development)
+  - [isEnvBrowser](#9-isenvbrowser--environment-detection)
+  - [disableMockInGame](#10-disablemockingame--mock-control-in-fivem)
 - [Lua Side](#lua-side)
 - [API Reference](#api-reference)
 - [Build](#build)
@@ -282,6 +284,48 @@ const player = await fetchNui("getPlayer", { id: 1 });
 
 ---
 
+### 9. `isEnvBrowser` — Environment Detection
+
+Returns `true` when running outside FiveM (regular browser). Uses the absence of FiveM's `invokeNative` bridge to detect the environment.
+
+```ts
+import { isEnvBrowser } from "@laot/nuix";
+
+if (isEnvBrowser()) {
+  // Running in dev browser — skip game-only logic
+  console.log("Dev mode");
+}
+```
+
+> **Note:** `fetchNui` already uses this internally — if you're in a browser and no `mockData` is configured for the event, it throws a clear error instead of making a doomed HTTP request.
+
+---
+
+### 10. `disableMockInGame` — Mock Control in FiveM
+
+By default, `mockData` is used everywhere — both in the browser and inside FiveM. If you want mocks to only work during local development but use real Lua callbacks inside the game, set `disableMockInGame: true`:
+
+```ts
+const fetchNui = createFetchNui<CallbackEvents>({
+  disableMockInGame: true,
+  mockData: {
+    getPlayer: { name: "DevPlayer", level: 99 },
+  },
+});
+
+// In browser → returns mock { name: "DevPlayer", level: 99 }
+// In FiveM   → calls real RegisterNUICallback("getPlayer", ...)
+```
+
+| Environment | `disableMockInGame: false` (default) | `disableMockInGame: true` |
+|---|---|---|
+| Browser + mock exists | Mock response ✅ | Mock response ✅ |
+| Browser + no mock | Error thrown ❌ | Error thrown ❌ |
+| FiveM + mock exists | Mock response | **Real fetch** |
+| FiveM + no mock | Real fetch | Real fetch |
+
+---
+
 ## Lua Side
 
 Here's how the Lua side connects to everything above:
@@ -308,7 +352,8 @@ SendNUIMessage({ action = "setLocales", data = Locales })
 
 | Export | Description |
 |---|---|
-| `createFetchNui<TMap>(options?)` | Returns a typed `fetchNui` function. Supports `debug` and `mockData` options. |
+| `createFetchNui<TMap>(options?)` | Returns a typed `fetchNui` function. Supports `debug`, `mockData`, and `disableMockInGame` options. |
+| `isEnvBrowser()` | Returns `true` when running outside FiveM (regular browser). |
 | `onNuiMessage<TMap>(handler)` | Listens to all NUI messages — use with a switch-case. |
 | `onNuiMessage<TMap, K>(action, handler)` | Listens to a single action — `data` is automatically typed. |
 | `luaFormat(template, ...args)` | Lua-style string formatter with `%s` / `%d` / `%f` support. |
@@ -325,7 +370,7 @@ SendNUIMessage({ action = "setLocales", data = Locales })
 | `NuiEventMap` | Base interface for defining event maps. |
 | `NuiMessagePayload<TData>` | Shape of `SendNUIMessage` payloads (`{ action, data }`). |
 | `FetchNuiOptions` | Per-call options for `fetchNui` (e.g. `timeout`). |
-| `FetchNuiFactoryOptions<TMap>` | Config for `createFetchNui` (`debug`, `mockData`). |
+| `FetchNuiFactoryOptions<TMap>` | Config for `createFetchNui` (`debug`, `mockData`, `disableMockInGame`). |
 | `LocaleRecord` | Flat or nested string map used for translations. |
 | `TranslatorOptions` | Config for `createTranslator`. |
 | `TranslatorFn` | Translator function signature (`(key, fallback, ...args) => string`). |
