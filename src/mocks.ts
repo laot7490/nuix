@@ -1,7 +1,12 @@
 const nuiMocks: Record<string, unknown> = {};
 
 /**
- * Registers mock responses for fetchNui in the browser (local dev).
+ * Registers mock responses for fetchNui in the browser.
+ * @param mocks - The mocks to register.
+ * @returns A function to unsubscribe from the action.
+ *
+ * @example
+ * setNuiMocks({ "doSomething": { success: true } });
  */
 export function setNuiMocks(mocks: Record<string, unknown>): void {
 	for (const [event, value] of Object.entries(mocks)) {

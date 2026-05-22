@@ -1,5 +1,5 @@
 /**
- * Flat payload from Lua `SendNUIMessage` (e.g. LT.NUI.CreateState).
+ * Flat payload from Lua `SendNUIMessage`.
  * Add your own fields in the handler or extend this interface in your project.
  */
 export interface NuiMessageData {

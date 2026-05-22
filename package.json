@@ -1,7 +1,7 @@
 {
 	"name": "@laot/nuix",
-	"version": "2.0.0",
-	"description": "Framework-agnostic FiveM NUI helpers — fetchNui, messages, LTBridge state batch",
+	"version": "2.0.1",
+	"description": "Framework-agnostic FiveM NUI helpers — fetchNui, messages and more.",
 	"sideEffects": false,
 	"type": "module",
 	"main": "./dist/index.cjs",

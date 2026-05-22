@@ -94,7 +94,12 @@ function unsetPath(obj: Record<string, unknown>, path: string): void {
 	delete (target as Record<string, unknown>)[last];
 }
 
-/** Apply LTBridge batch + deletes onto state (keeps JS arrays on partial list patches). */
+/**
+ * Apply LTBridge batch + deletes onto state.
+ * @param target - The target object to apply the batch to.
+ * @param message - The message to apply to the target.
+ * @returns The target object with the batch applied.
+ */
 export function applyLtBatch<T extends object>(target: T, message: LtBatchMessage): T {
 	const root = target as Record<string, unknown>;
 
@@ -109,7 +114,12 @@ export function applyLtBatch<T extends object>(target: T, message: LtBatchMessag
 	return target;
 }
 
-/** Full replace for LTBridge sync/set messages (UpdatePlayer_sync / _set). */
+/**
+ * Full replace for LTBridge sync/set messages.
+ * @param target - The target object to replace the state of.
+ * @param state - The state to replace the target with.
+ * @returns The target object with the state replaced.
+ */
 export function replaceLtState<T extends object>(target: T, state: Record<string, unknown>): T {
 	const root = target as Record<string, unknown>;
 	for (const key of Object.keys(root)) {

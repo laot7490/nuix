@@ -65,8 +65,6 @@ end)
 
 ## 2. Messages from Lua
 
-Payloads are **flat** (`{ action = "...", batch = ..., ... }`), not nested under `data`.
-
 ```ts
 import { onNuiMessage, onNuiAction } from "@laot/nuix";
 
@@ -111,8 +109,7 @@ When using `LT.NUI.CreateState` on Lua, the UI receives:
 
 ```ts
 import { onNuiMessage, applyLtBatch, replaceLtState } from "@laot/nuix";
-import { useMainStore } from "@/stores";
-import { useLocaleStore } from "@/stores";
+import { useMainStore, useLocaleStore } from "@/stores";
 
 onNuiMessage((data) => {
   const main = useMainStore();
