@@ -1,7 +1,7 @@
 {
 	"name": "@laot/nuix",
-	"version": "1.0.5",
-	"description": "Modular, type-safe TypeScript library for FiveM NUI projects",
+	"version": "2.0.0",
+	"description": "Framework-agnostic FiveM NUI helpers — fetchNui, messages, LTBridge state batch",
 	"sideEffects": false,
 	"type": "module",
 	"main": "./dist/index.cjs",

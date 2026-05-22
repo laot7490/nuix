@@ -1,396 +1,200 @@
-# NUIX
+# @laot/nuix
+
+Small, framework-agnostic helpers for **FiveM NUI** — callbacks, message listeners, and **LTBridge** `CreateState` sync on the web.
+
+- Zero runtime dependencies
+- ESM + CJS + TypeScript declarations
+- Works with Vue, React, Svelte, or plain JS
 
 [![npm version](https://img.shields.io/npm/v/@laot/nuix.svg)](https://www.npmjs.com/package/@laot/nuix)
 [![license](https://img.shields.io/npm/l/@laot/nuix.svg)](https://github.com/laot7490/nuix/blob/main/LICENSE)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/@laot/nuix)](https://bundlephobia.com/package/@laot/nuix)
-
-A type-safe TypeScript helper library for FiveM NUI development. Wraps the most common NUI patterns — fetching data from Lua, listening for messages, formatting strings, and handling translations — in a clean, fully typed API. Zero runtime dependencies, works with any frontend framework.
-
----
-
-## Table of Contents
-
-- [Install](#install)
-- [Quick Start](#quick-start)
-  - [Event Maps](#1-event-maps)
-  - [fetchNui](#2-fetchnui--typed-lua-callbacks)
-  - [onNuiMessage](#3-onnuimessage--listening-to-lua)
-  - [luaFormat](#4-luaformat--string-formatting)
-  - [Translator (Global)](#5-translator-global)
-  - [Translator (Isolated)](#6-translator-isolated)
-  - [Debug Mode](#7-debug-mode)
-  - [Mock Data](#8-mock-data-local-development)
-  - [isEnvBrowser](#9-isenvbrowser--environment-detection)
-  - [disableMockInGame](#10-disablemockingame--mock-control-in-fivem)
-- [Lua Side](#lua-side)
-- [API Reference](#api-reference)
-- [Build](#build)
-- [License](#license)
 
 ---
 
 ## Install
 
 ```bash
-# pick your package manager
 npm install @laot/nuix
-pnpm add @laot/nuix
-yarn add @laot/nuix
-bun add @laot/nuix
 ```
 
 ---
 
-## Quick Start
+## What it does
 
-### 1. Event Maps
+| Problem | nuix API |
+|--------|----------|
+| Call Lua from the UI | `fetchNui` |
+| Dev in the browser without FiveM | `setResourceName`, `setNuiMocks`, per-call `mockData` |
+| Listen to `SendNUIMessage` | `onNuiMessage`, `onNuiAction` |
+| Apply LTBridge batched state | `applyLtBatch` |
+| Full state replace (`_sync` / `_set`) | `replaceLtState` |
 
-Before using anything, you'll want to define your events. NUIX uses these maps to infer the exact types for both data you send and responses you get back. You'll typically have two separate maps:
+---
 
-- **Callback events** — for `fetchNui` calls. Your TS code sends data to Lua, Lua processes it and sends a response back.
-- **Message events** — for `onNuiMessage` listeners. Lua pushes data to TS via `SendNUIMessage`, no response needed.
+## 1. fetchNui
+
+Posts JSON to `https://<resource>/<event>` (same as `RegisterNUICallback` on the Lua side).
 
 ```ts
-import type { NuiEventMap } from "@laot/nuix";
+import { fetchNui, isEnvBrowser, setResourceName, setNuiMocks } from "@laot/nuix";
 
-// Things you ASK Lua for (request → response)
-interface CallbackEvents extends NuiEventMap {
-  getPlayer:  { data: { id: number }; response: { name: string; level: number } };
-  sendNotify: { data: { message: string }; response: void };
+if (isEnvBrowser()) {
+  setResourceName("myresource");
+  setNuiMocks({
+    getPlayer: { name: "Dev", level: 99 },
+  });
 }
 
-// Things Lua TELLS you about (one-way push)
-interface MessageEvents extends NuiEventMap {
-  showMenu: { data: { items: string[] }; response: void };
-  hideMenu: { data: void; response: void };
-}
+const player = await fetchNui<{ name: string; level: number }>("getPlayer", { id: 1 });
+
+// Or pass a one-off mock as the third argument
+const mocked = await fetchNui("getPlayer", {}, { name: "Local", level: 1 });
 ```
 
-> Keeping them separate isn't mandatory, but it makes your code way easier to reason about — you'll always know which events go where.
+In the browser, if there is no mock, `fetchNui` throws with a clear error so you do not hit a dead URL silently.
 
----
+**Lua:**
 
-### 2. `fetchNui` — Typed Lua Callbacks
-
-`createFetchNui` gives you a typed function that POSTs JSON to `https://<resourceName>/<event>`, matching `RegisterNUICallback` on the Lua side. The resource name is automatically grabbed from FiveM's `GetParentResourceName()`.
-
-```ts
-import { createFetchNui } from "@laot/nuix";
-
-const fetchNui = createFetchNui<CallbackEvents>();
-
-// fully typed — player is { name: string; level: number }
-const player = await fetchNui("getPlayer", { id: 1 });
-console.log(player.name, player.level);
-
-// void response — you're just notifying Lua, no return value
-await fetchNui("sendNotify", { message: "Hello!" });
-```
-
-You can also set a **timeout** to avoid hanging forever if the Lua callback never responds:
-
-```ts
-const data = await fetchNui("getPlayer", { id: 2 }, { timeout: 5000 });
-// rejects with "[NUIX] fetchNui("getPlayer") timed out after 5000ms" if no response
+```lua
+RegisterNUICallback("getPlayer", function(data, cb)
+  cb({ name = "John", level = 42 })
+end)
 ```
 
 ---
 
-### 3. `onNuiMessage` — Listening to Lua
+## 2. Messages from Lua
 
-Listens for messages from Lua's `SendNUIMessage`. There are two ways to use it:
-
-**Switch-case** — one listener that handles every action:
+Payloads are **flat** (`{ action = "...", batch = ..., ... }`), not nested under `data`.
 
 ```ts
-import { onNuiMessage } from "@laot/nuix";
+import { onNuiMessage, onNuiAction } from "@laot/nuix";
 
-const unsub = onNuiMessage<MessageEvents>((action, data) => {
-  switch (action) {
-    case "showMenu":
-      console.log(data.items);
-      break;
-    case "hideMenu":
-      closeMenu();
-      break;
-  }
+const unsub = onNuiMessage((data) => {
+  console.log(data.action, data.namespace);
 });
 
-// when you're done listening
+const unsubLocale = onNuiAction("UpdateLocale", (data) => {
+  console.log(data.locale, data.translations);
+});
+
 unsub();
 ```
 
-**Per-action** — filters by action name, and `data` is fully typed automatically:
+Extend `NuiMessageData` in your project for custom actions:
 
 ```ts
-const unsub = onNuiMessage<MessageEvents, "showMenu">("showMenu", (data) => {
-  console.log(data.items); // ✅ typed as string[]
-});
-```
+import type { NuiMessageData } from "@laot/nuix";
 
-Both overloads return an `UnsubscribeFn` — just call it to remove the event listener.
-
----
-
-### 4. `luaFormat` — String Formatting
-
-A small utility that formats strings using Lua-style placeholders. Handles `null` and `undefined` safely instead of crashing.
-
-| Specifier | What it does                         |
-|-----------|--------------------------------------|
-| `%s`      | String (null/undefined → `""`)       |
-| `%d` / `%i` | Integer (floors the value, NaN → `0`) |
-| `%f`      | Float (NaN → `0`)                    |
-| `%%`      | Literal `%` sign                     |
-
-```ts
-import { luaFormat } from "@laot/nuix";
-
-luaFormat("Hello %s, you are level %d", "Laot", 42);
-// → "Hello Laot, you are level 42"
-
-luaFormat("Accuracy: %f%%", 99.5);
-// → "Accuracy: 99.5%"
-
-luaFormat("Safe: %s %d", undefined, NaN);
-// → "Safe:  0"
-```
-
----
-
-### 5. Translator (Global)
-
-A global translation system built on top of `luaFormat`. The idea is simple: Lua sends locale data once (usually on resource start), you register it, and then use `_U()` anywhere in your UI to get translated strings.
-
-**Registration:**
-
-```ts
-import { registerLocales, _U, onNuiMessage } from "@laot/nuix";
-import type { NuiEventMap, LocaleRecord } from "@laot/nuix";
-
-interface Events extends NuiEventMap {
-  setLocales: { data: LocaleRecord; response: void };
-  showMenu:   { data: { items: string[] }; response: void };
+interface MyMessage extends NuiMessageData {
+  items?: string[];
 }
+```
 
-onNuiMessage<Events>((action, data) => {
-  switch (action) {
-    case "setLocales":
-      registerLocales(data); // store the locale map globally
+---
+
+## 3. LTBridge CreateState (batch + sync)
+
+When using `LT.NUI.CreateState` on Lua, the UI receives:
+
+| Lua | `action` | Fields |
+|-----|----------|--------|
+| Batched edits (same tick) | `UpdatePlayer` (your action name) | `batch`, `deletes?`, `namespace` |
+| `:sync()` | `UpdatePlayer_sync` | `state`, `namespace` |
+| `:set()` | `UpdatePlayer_set` | `state`, `namespace` |
+
+**Array paths are 1-based** (Lua style), e.g. `"inventory.items.1.name"` → JS array index `0`.
+
+`applyLtBatch` merges nested `batch` objects and applies partial **array index patches** without replacing the whole array (see LTBridge `bridge-nui` behaviour).
+
+### Vue + Pinia
+
+```ts
+import { onNuiMessage, applyLtBatch, replaceLtState } from "@laot/nuix";
+import { useMainStore } from "@/stores";
+import { useLocaleStore } from "@/stores";
+
+onNuiMessage((data) => {
+  const main = useMainStore();
+  const locale = useLocaleStore();
+
+  switch (data.action) {
+    case "UpdatePlayer":
+      main.$patch((s) =>
+        applyLtBatch(s.player, {
+          batch: data.batch,
+          deletes: data.deletes,
+        }),
+      );
       break;
-    case "showMenu":
-      openMenu(data.items);
+    case "UpdatePlayer_sync":
+    case "UpdatePlayer_set":
+      main.$patch((s) => replaceLtState(s.player, data.state ?? {}));
+      break;
+    case "UpdateLocale":
+      if (data.locale) locale.updateLocale(data.locale);
+      if (data.translations) locale.updateTranslations(data.translations);
       break;
   }
 });
 ```
 
-**Usage — anywhere in your app:**
+### React
+
+`applyLtBatch` and `replaceLtState` mutate **in place**. With `useState`, clone first so React sees a new reference:
 
 ```ts
-// assuming Lua sent: { ui: { greeting: "Hello %s!", level: "Level %d" } }
-
-_U("ui.greeting", "Hi", "Laot");   // → "Hello Laot!"
-_U("ui.level", "Lv.", 42);         // → "Level 42"
-_U("missing.key", "Fallback");     // → "Fallback" (key not found, returns fallback)
-```
-
-**Adding more translations later** without overwriting existing ones:
-
-```ts
-import { extendLocales } from "@laot/nuix";
-
-extendLocales({ ui: { subtitle: "Overview" } });
-// merges into the existing locale map — won't touch other keys
-```
-
-> `_U` uses dot notation. `"ui.greeting"` looks up `locales.ui.greeting` under the hood.
-
----
-
-### 6. Translator (Isolated)
-
-If you need a translator that's completely independent from the global `_U` — maybe a component with its own locale scope — use `createTranslator`:
-
-```ts
-import { createTranslator } from "@laot/nuix";
-
-const _T = createTranslator({
-  locales: {
-    greeting: "Hello %s!",
-    level: "Level %d",
-  },
+setPlayer((prev) => {
+  const next = structuredClone(prev);
+  applyLtBatch(next, { batch: data.batch, deletes: data.deletes });
+  return next;
 });
 
-_T("greeting", "MISSING", "Laot"); // → "Hello Laot!"
-_T("level", "MISSING", 42);        // → "Level 42"
-_T("no.key", "Not found");         // → "Not found"
-```
-
-There's also `mergeLocales` if you need to deep-merge locale records manually:
-
-```ts
-import { mergeLocales } from "@laot/nuix";
-
-const base = { ui: { greeting: "Hello %s!" } };
-const patch = { ui: { greeting: "Hey %s, welcome back!" } };
-
-const merged = mergeLocales(base, patch);
-// merged.ui.greeting → "Hey %s, welcome back!"
+// sync / set
+setPlayer(structuredClone(data.state ?? {}));
 ```
 
 ---
 
-### 7. Debug Mode
-
-Pass `debug: true` to `createFetchNui` and every call will be logged to the console with the `[NUIX]` prefix. Super useful during development:
-
-```ts
-const fetchNui = createFetchNui<CallbackEvents>({ debug: true });
-
-await fetchNui("getPlayer", { id: 1 });
-// Console:
-// [NUIX] → getPlayer { id: 1 }
-// [NUIX] ← getPlayer { name: "Laot", level: 42 }
-```
-
----
-
-### 8. Mock Data (Local Development)
-
-When you're building your UI outside of FiveM (like in a regular browser with `npm run dev`), there's no Lua backend to respond to your `fetchNui` calls. That's where `mockData` comes in — it returns pre-defined responses without making any HTTP requests.
-
-```ts
-const fetchNui = createFetchNui<CallbackEvents>({
-  debug: true,
-  mockData: {
-    // static response — just return this object every time
-    getPlayer: { name: "DevPlayer", level: 99 },
-
-    // dynamic response — receive the data, return something based on it
-    sendNotify: (data) => {
-      console.log("Mock notification:", data.message);
-    },
-  },
-});
-
-const player = await fetchNui("getPlayer", { id: 1 });
-// Console:
-// [NUIX] → getPlayer { id: 1 }
-// [NUIX] ← getPlayer (mock) { name: "DevPlayer", level: 99 }
-```
-
-> Works great combined with `debug: true` — you can see exactly what's being sent and received in the console.
-
----
-
-### 9. `isEnvBrowser` — Environment Detection
-
-Returns `true` when running outside FiveM (regular browser). Uses the absence of FiveM's `invokeNative` bridge to detect the environment.
-
-```ts
-import { isEnvBrowser } from "@laot/nuix";
-
-if (isEnvBrowser()) {
-  // Running in dev browser — skip game-only logic
-  console.log("Dev mode");
-}
-```
-
-> **Note:** `fetchNui` already uses this internally — if you're in a browser and no `mockData` is configured for the event, it throws a clear error instead of making a doomed HTTP request.
-
----
-
-### 10. `disableMockInGame` — Mock Control in FiveM
-
-By default, `mockData` is used everywhere — both in the browser and inside FiveM. If you want mocks to only work during local development but use real Lua callbacks inside the game, set `disableMockInGame: true`:
-
-```ts
-const fetchNui = createFetchNui<CallbackEvents>({
-  disableMockInGame: true,
-  mockData: {
-    getPlayer: { name: "DevPlayer", level: 99 },
-  },
-});
-
-// In browser → returns mock { name: "DevPlayer", level: 99 }
-// In FiveM   → calls real RegisterNUICallback("getPlayer", ...)
-```
-
-| Environment | `disableMockInGame: false` (default) | `disableMockInGame: true` |
-|---|---|---|
-| Browser + mock exists | Mock response ✅ | Mock response ✅ |
-| Browser + no mock | Error thrown ❌ | Error thrown ❌ |
-| FiveM + mock exists | Mock response | **Real fetch** |
-| FiveM + no mock | Real fetch | Real fetch |
-
----
-
-## Lua Side
-
-Here's how the Lua side connects to everything above:
-
-```lua
--- Responds to fetchNui("getPlayer", { id = ... })
-RegisterNUICallback("getPlayer", function(data, cb)
-    local player = GetPlayerData(data.id)
-    cb({ name = player.name, level = player.level })
-end)
-
--- Pushes a message to onNuiMessage listeners
-SendNUIMessage({ action = "showMenu", data = { items = {"Pistol", "Rifle"} } })
-
--- Sends locale data for registerLocales
-SendNUIMessage({ action = "setLocales", data = Locales })
-```
-
----
-
-## API Reference
-
-### Functions
+## API reference
 
 | Export | Description |
-|---|---|
-| `createFetchNui<TMap>(options?)` | Returns a typed `fetchNui` function. Supports `debug`, `mockData`, and `disableMockInGame` options. |
-| `isEnvBrowser()` | Returns `true` when running outside FiveM (regular browser). |
-| `onNuiMessage<TMap>(handler)` | Listens to all NUI messages — use with a switch-case. |
-| `onNuiMessage<TMap, K>(action, handler)` | Listens to a single action — `data` is automatically typed. |
-| `luaFormat(template, ...args)` | Lua-style string formatter with `%s` / `%d` / `%f` support. |
-| `registerLocales(locales)` | Sets the global locale map (replaces the current one). |
-| `extendLocales(...records)` | Merges new entries into the existing global locale map. |
-| `_U(key, fallback, ...args)` | Global translator — reads from the registered locale map. |
-| `createTranslator(options)` | Returns an isolated translator function with its own locale scope. |
-| `mergeLocales(...records)` | Deep-merges multiple locale records into one. |
+|--------|-------------|
+| `isEnvBrowser()` | `true` when not running inside FiveM |
+| `getResourceName()` | Host segment for NUI fetch URLs |
+| `setResourceName(name)` | Override resource name (browser dev) |
+| `fetchNui(event, data?, mockData?)` | NUI callback POST |
+| `setNuiMocks(mocks)` | Register browser mocks by event name |
+| `clearNuiMocks()` | Clear mocks |
+| `onNuiMessage(handler)` | Subscribe to all messages; returns unsubscribe |
+| `onNuiAction(action, handler)` | Subscribe to one `action` |
+| `applyLtBatch(target, message)` | Apply `batch` + `deletes` |
+| `replaceLtState(target, state)` | Full in-place replace for `_sync` / `_set` |
+| `LtBatchMessage` | `{ batch?, deletes? }` |
+| `NuiMessageData` | Flat message shape |
 
-### Types
+---
 
-| Export | Description |
-|---|---|
-| `NuiEventMap` | Base interface for defining event maps. |
-| `NuiMessagePayload<TData>` | Shape of `SendNUIMessage` payloads (`{ action, data }`). |
-| `FetchNuiOptions` | Per-call options for `fetchNui` (e.g. `timeout`). |
-| `FetchNuiFactoryOptions<TMap>` | Config for `createFetchNui` (`debug`, `mockData`, `disableMockInGame`). |
-| `LocaleRecord` | Flat or nested string map used for translations. |
-| `TranslatorOptions` | Config for `createTranslator`. |
-| `TranslatorFn` | Translator function signature (`(key, fallback, ...args) => string`). |
-| `FormatArg` | Accepted argument types for `luaFormat` (`string \| number \| boolean \| null \| undefined`). |
-| `UnsubscribeFn` | Cleanup function returned by `onNuiMessage`. |
-| `NuiMessageHandler<TData>` | Callback type for NUI message listeners. |
+## Migrating from 1.x
+
+Removed in v2:
+
+- `createFetchNui` — use `fetchNui` + `setNuiMocks`
+- `onNuiMessage` nested `{ action, data }` — flat payload only
+- Locale helpers (`_U`, `registerLocales`, …) — keep locale in your app (e.g. Pinia)
+- `NuiEventMap` — optional types in your own codebase
 
 ---
 
 ## Build
 
 ```bash
-npm run build      # outputs ESM + CJS + .d.ts to dist/
-npm run typecheck  # tsc --noEmit
+npm run build
+npm run typecheck
 ```
 
-Requires Node.js ≥ 18.
+Requires Node.js 18+.
 
 ---
 
-## License
-
-[MIT](LICENSE) © LAOT
+MIT © [LAOT](https://github.com/laot7490)
