@@ -17,8 +17,7 @@ npm install @laot/nuix
 |--------|-----|
 | `fetchNui` | Call Lua (`RegisterNUICallback`) |
 | `onNuiMessage` / `onNuiAction` | Listen to `SendNUIMessage` |
-| `bindLtState` | Wire LTBridge `CreateState` into an object |
-| `applyLtBatch` / `replaceLtState` | Low-level patch / full replace |
+| `applyLtBatch` / `replaceLtState` | Patch / full replace for LTBridge `CreateState` |
 | `isEnvBrowser` / `setResourceName` / `setNuiMocks` | Browser / Vite dev |
 
 ---
@@ -74,27 +73,25 @@ Lua `LT.NUI.CreateState("UpdatePlayer", …)` sends:
 
 Lua array paths are 1-based (`items.1` → JS index `0`).
 
-### Vue + Pinia
+`applyLtBatch` and `replaceLtState` mutate the target in place:
 
 ```ts
-import { defineStore } from "pinia";
-import { bindLtState } from "@laot/nuix";
+import { onNuiAction, applyLtBatch, replaceLtState } from "@laot/nuix";
 
-export const usePlayerStore = defineStore("player", {
-  state: () => ({
-    hud: { health: 100, armor: 100 },
-  }),
+onNuiAction("UpdatePlayer", (data) => {
+  applyLtBatch(store.$state, data);
 });
 
-const store = usePlayerStore();
-bindLtState("UpdatePlayer", store.$state);
+onNuiAction("UpdatePlayer_sync", (data) => {
+  replaceLtState(store.$state, data.state ?? {});
+});
+
+onNuiAction("UpdatePlayer_set", (data) => {
+  replaceLtState(store.$state, data.state ?? {});
+});
 ```
 
-`bindLtState` mutates `target` in place and returns an unsubscribe fn.
-
-### Manual / React
-
-`applyLtBatch` and `replaceLtState` also mutate in place. With React state, clone first:
+With React state, clone first:
 
 ```ts
 setPlayer((prev) => {
