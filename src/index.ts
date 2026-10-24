@@ -3,4 +3,5 @@ export { fetchNui } from "./fetchNui";
 export { setNuiMocks, clearNuiMocks } from "./mocks";
 export { onNuiMessage, onNuiAction } from "./message";
 export { applyLtBatch, replaceLtState, type LtBatchMessage } from "./ltBatch";
+export { bindLtState } from "./ltState";
 export type { NuiMessageData } from "./types";
